@@ -20,6 +20,7 @@
 # Gradle:
 .idea/**/gradle.xml
 .idea/**/libraries
+*.iml
 
 # Mongo Explorer plugin:
 .idea/**/mongoSettings.xml
@@ -47,3 +48,7 @@ fabric.properties
 .gitignore
 /.idea
 
+LIB/
+mirrorlake-server/target/
+test1
+test2

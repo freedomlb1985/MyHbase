@@ -1,0 +1,116 @@
+ENV SETUP:
+1   SSH PUBLIC KEY
+    ssh-keygen -t rsa
+    scp ./id_rsa.pub xx@xxx:~/
+    cat id_rsa.pub >> ~/.ssh/authorized_keys
+    scp authorized_keys xx@xx/.ssh/authorized_keys
+
+2   JAVA
+    Install java:
+        sudo apt-get install python-software-properties
+        sudo add-apt-repository ppa:webupd8team/java
+        sudo apt-get update
+        Oracle JDK 6: sudo apt-get install oracle-java6-installer
+        Oracle JDK 7: sudo apt-get install oracle-java7-installer
+        Oracle JDK 8: sudo apt-get install oracle-java8-installer
+        option:
+            sudo update-alternatives --config java
+        set JAVA_HOME: sudo vim /etc/environment
+
+3   SCALA:
+    sudo apt-get remove scala-library scala
+    sudo wget www.scala-lang.org/files/archive/scala-2.11.11.deb
+    sudo dpkg -i scala-2.11.11.deb
+    sudo apt-get update
+    sudo apt-get install scala
+    :( => don't know how to find the scala home path
+
+4   ENV variables
+    sudo vim /etc/environment
+        OR
+    sudo vim /etc/profile
+    export JAVA_HOME = /XXXXXXX
+    source /etc/profile
+
+5   HADOOP
+    add below configurations to env
+    HADOOP_HOME=/home/frey/apache/hadoop-2.7.3
+    HADOOP_CONF_DIR=/home/frey/apache/hadoop-2.7.3/etc/hadoop
+    YARN_HOME=/home/frey/apache/hadoop-2.7.3
+    YARN_CONF_DIR=/home/frey/apache/hadoop-2.7.3/etc/hadoop
+    PATH= $PATH:$HADOOP_HOME/bin
+
+    Start:
+        ./bin/hdfs namenode -format     (for first time run)
+        ./sbin/start-dfs.sh     (if ssh trusted access if configured) http://localhost:50070
+
+        ./sbin/start-yarn.sh    http://localhost:8088
+
+6   zookeeper
+    add below info to zoo.cfg
+        server.1=192.168.171.132:2666:3666
+        server.2=192.168.171.133:2666:3666
+        server.3=192.168.171.134:2666:3666
+    set myid: 1 2 3
+    start:
+        bin/zkServer.sh start
+    stop:
+        bin/zkServer.sh stop
+
+    check:
+        bin/zkCli.sh -server node3:2181,node4:2181,node5:2181
+        ls /
+        create /zk_test my_data
+        get /zk_test
+        delete /zk_test
+
+
+7   kafka(https://kafka.apache.org):
+    edit server.properties:
+        broker.id = N (unique integer for each broker)
+        zookeeper.connect=node3:2181,node4:2181,node5:2181
+        log.retention.hours=168
+    start:
+        bin/kafka-server-start.sh config/server.properties &
+    check:
+        bin/kafka-topics.sh --create --zookeeper node3:2181,node4:2181,node5:2181 --replication-factor 1 --partitions 1 --topic test
+        bin/kafka-topics.sh --list --zookeeper node3:2181,node4:2181,node5:2181
+
+        bin/kafka-console-producer.sh --broker-list node4:9092 --topic test
+        bin/kafka-console-consumer.sh --bootstrap-server node5:9092 --topic test --from-beginning
+
+
+
+8   spark:
+        spark-submit \
+        --name KSSH-0.3 \
+        --class com.jiuye.KSSH     \
+        --master yarn     \
+        --deploy-mode cluster     \
+        --driver-memory 2g     \
+        --executor-memory 2g     \
+        --executor-cores   1   \
+        --num-executors 8 \
+        --jars $(echo /opt/software/spark2.1.1/spark_on_yarn/libs/*.jar | tr ' ' ',') \
+        --conf "spark.ui.showConsoleProgress=false" \
+        --conf "spark.yarn.am.memory=1024m" \
+        --conf "spark.yarn.am.memoryOverhead=1024m" \
+        --conf "spark.yarn.driver.memoryOverhead=1024m" \
+        --conf "spark.yarn.executor.memoryOverhead=1024m" \
+        --conf "spark.yarn.am.extraJavaOptions=-XX:+UseG1GC -XX:MaxGCPauseMillis=300 -XX:InitiatingHeapOccupancyPercent=50 -XX:G1ReservePercent=20 -XX:+DisableExplicitGC -Dcdh.version=5.12.0" \
+        --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC -XX:MaxGCPauseMillis=300 -XX:InitiatingHeapOccupancyPercent=50 -XX:G1ReservePercent=20 -XX:+DisableExplicitGC -Dcdh.version=5.12.0" \
+        --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:MaxGCPauseMillis=300 -XX:InitiatingHeapOccupancyPercent=50 -XX:G1ReservePercent=20 -XX:+DisableExplicitGC -Dcdh.version=5.12.0" \
+        --conf "spark.streaming.backpressure.enabled=true" \
+        --conf "spark.streaming.kafka.maxRatePerPartition=1250" \
+        --conf "spark.locality.wait=1s" \
+        --conf "spark.shuffle.consolidateFiles=true" \
+
+        --conf "spark.executor.heartbeatInterval=360000" \
+        --conf "spark.network.timeout=420000" \
+
+        --conf "spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+        --conf "spark.hadoop.fs.hdfs.impl.disable.cache=true" \
+        /opt/software/spark2.1.1/spark_on_yarn/KSSH-0.3.jar
+
+
+
